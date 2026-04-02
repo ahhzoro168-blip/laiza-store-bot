@@ -218,13 +218,17 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cursor.execute("SELECT * FROM products WHERE category_id=?", (cat_id,))
         for pid, file_id, price, _ in cursor.fetchall():
+            keyboard = build_stock_buttons(pid).inline_keyboard
 
-        keyboard = build_stock_buttons(pid).inline_keyboard
+            keyboard.append([
+                InlineKeyboardButton("🗑 Delete Product", callback_data=f"confirmdelprod_{pid}")
+            ])
 
-	# add delete product button at bottom
-	keyboard.append([
-	    InlineKeyboardButton("🗑 Delete Product", callback_data=f"confirmdelprod_{pid}")
-	])
+            await query.message.reply_photo(
+                photo=file_id,
+                caption=f"📦 Stock Manager\n💲 {price}",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
 
 	await query.message.reply_photo(
     	    photo=file_id,
