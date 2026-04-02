@@ -12,7 +12,6 @@ import sqlite3
 conn = sqlite3.connect("store.db", check_same_thread=False)
 cursor = conn.cursor()
 
-cursor.execute(...)
 conn.commit()
 
 import os
