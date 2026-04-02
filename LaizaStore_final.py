@@ -1,3 +1,4 @@
+from database import conn, cursor, init_db
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup,
     ReplyKeyboardMarkup, KeyboardButton
@@ -7,6 +8,12 @@ from telegram.ext import (
     MessageHandler, filters, ContextTypes
 )
 import sqlite3
+
+conn = sqlite3.connect("store.db", check_same_thread=False)
+cursor = conn.cursor()
+
+cursor.execute(...)
+conn.commit()
 
 import os
 TOKEN = os.getenv("TOKEN")
@@ -566,6 +573,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Send price")
 
 # ===== RUN =====
+init_db()
+
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
