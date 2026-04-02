@@ -100,22 +100,39 @@ def build_stock_buttons(pid):
 
     return InlineKeyboardMarkup(buttons)
 
+# ===== build Stock Buttons =====
+def build_stock_buttons(pid):
+    cursor.execute("SELECT size, stock FROM sizes WHERE product_id=?", (pid,))
+    sizes = cursor.fetchall()
+
+    buttons = []
+
+    for s, st in sizes:
+        buttons.append([
+            InlineKeyboardButton("➖", callback_data=f"minus_{pid}_{s}"),
+            InlineKeyboardButton(f"{s} ({st})", callback_data="no_action"),
+            InlineKeyboardButton("➕", callback_data=f"plus_{pid}_{s}"),
+            InlineKeyboardButton("🗑", callback_data=f"confirmdel_{pid}_{s}")
+        ])
+
+    return InlineKeyboardMarkup(buttons)
+
 # ===== START =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     if is_allowed(user_id):
         keyboard = [
-            [KeyboardButton("🛍 Shop")],
-            [KeyboardButton("⚙️ Manage")]
+            [KeyboardButton("🛍 ម៉ូតស្បែកជើង")],
+            [KeyboardButton("⚙️ ការគ្រប់គ្រង")]
         ]
     else:
         keyboard = [
-            [KeyboardButton("🛍 Shop")]
+            [KeyboardButton("🛍 ម៉ូតស្បែកជើង")]
         ]
 
     await update.message.reply_text(
-        "✨ Welcome\n\nChoose:",
+        "✨ សួស្ដីចាស!​ នេះជា Bot​ សម្រាប់មើលម៉ូតស្បែកជើង\n\nសូមជ្រើសរើស៖",
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
 
@@ -132,11 +149,18 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cursor.execute("SELECT * FROM products WHERE category_id=?", (cat_id,))
         for pid, file_id, price, _ in cursor.fetchall():
 
-            await query.message.reply_photo(
-                photo=file_id,
-                caption=f"💲 {price}\n────────────\nSelect Size:",
-                reply_markup=build_size_buttons(pid)
-            )
+            keyboard = build_stock_buttons(pid).inline_keyboard
+
+	    # add delete product button at bottom
+	    keyboard.append([
+                InlineKeyboardButton("🗑 Delete Product", callback_data=f"confirmdelprod_{pid}")
+	    ])
+
+	    await query.message.reply_photo(
+    	        photo=file_id,
+    	        caption=f"📦 Stock Manager\n💲 {price}",
+    	        reply_markup=InlineKeyboardMarkup(keyboard)
+	    )
 
     # ===== BUY =====
     elif data.startswith("buy_"):
@@ -259,6 +283,39 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "no_action":
         await query.answer()
 
+    # ===== DELETE =====
+    elif data.startswith("deleteproduct_"):
+        pid = data.split("_")[1]
+
+        # delete sizes first
+        cursor.execute("DELETE FROM sizes WHERE product_id=?", (pid,))
+    
+        # delete product
+        cursor.execute("DELETE FROM products WHERE id=?", (pid,))
+    
+        conn.commit()
+
+        await query.answer("🗑 Product Deleted")
+
+        await query.message.delete()
+        
+  
+    # ===== DELETE 00 =====
+    elif data.startswith("confirmdelprod_"):
+        pid = data.split("_")[1]
+
+        keyboard = [
+            [
+                InlineKeyboardButton("✅ Yes", callback_data=f"deleteproduct_{pid}"),
+                InlineKeyboardButton("❌ No", callback_data="no_action")
+            ]
+        ]
+
+        await query.message.reply_text(
+            "Delete this product?",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
 # ===== TEXT =====
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -266,7 +323,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     step = context.user_data.get("step")
 
     if not is_allowed(user_id):
-        if text != "🛍 Shop":
+        if text != "🛍 ម៉ូតស្បែកជើង":
             await update.message.reply_text("🚫 You can only use Shop")
             return
 
@@ -332,14 +389,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_grid(cats, "addcat")
         )
 
-    if text == "🛍 Shop":
+    if text == "🛍 ម៉ូតស្បែកជើង":
         cursor.execute("SELECT * FROM categories")
         await update.message.reply_text(
-            "🛍 Choose Category",
+            "🛍 ជ្រើសរើសប្រភេទស្បែកជើង",
             reply_markup=build_grid(cursor.fetchall(), "cat")
         )
 
-    elif text == "⚙️ Manage":
+    elif text == "⚙️ ការគ្រប់គ្រង":
         if not is_allowed(user_id):
             await update.message.reply_text("🚫 Not allowed")
             return
@@ -350,7 +407,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [KeyboardButton("🔙 Back")]
         ]
         await update.message.reply_text(
-            "⚙️ Manage",
+            "⚙️ ការគ្រប់គ្រង",
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
 
