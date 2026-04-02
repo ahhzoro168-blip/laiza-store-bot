@@ -6,9 +6,8 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters, ContextTypes
 )
-import sqlite3
-
-TOKEN = "8788581227:AAHIOKDHz-GB0hWORKLTWnIyV2LPuOqnFWA"
+import os
+TOKEN = os.getenv("8788581227:AAHIOKDHz-GB0hWORKLTWnIyV2LPuOqnFWA") 
 
 # 👑 OWNER + FAMILY IDS
 OWNER_ID = 6178165984
