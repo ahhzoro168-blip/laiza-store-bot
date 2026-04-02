@@ -58,7 +58,7 @@ def build_grid(items, prefix, page=0, per_page=6, per_row=3):
 
     return InlineKeyboardMarkup(keyboard)
 
-def build_grid(items, prefix, page=0, per_page=9, per_row=3):
+def build_grid(items, prefix, page=0, per_page=6, per_row=2):
     start = page * per_page
     end = start + per_page
     sliced = items[start:end]
