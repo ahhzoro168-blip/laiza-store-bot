@@ -7,8 +7,8 @@ from telegram.ext import (
     MessageHandler, filters, ContextTypes
 )
 import sqlite3
-
 import os
+
 TOKEN = os.getenv("TOKEN")
 
 # 👑 OWNER + FAMILY IDS
@@ -100,9 +100,9 @@ def build_stock_buttons(pid):
 
     return InlineKeyboardMarkup(buttons)
 
-
+# ✅ FIXED (no recursion)
 def build_full_stock_buttons(pid):
-    keyboard = build_full_stock_buttons(pid).inline_keyboard
+    keyboard = build_stock_buttons(pid).inline_keyboard
 
     keyboard.append([
         InlineKeyboardButton("🗑 Delete Product", callback_data=f"confirmdelprod_{pid}")
@@ -135,7 +135,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
 
-    # ===== CATEGORY VIEW =====
     if data.startswith("cat_"):
         cat_id = data.split("_")[1]
 
@@ -148,30 +147,20 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=build_size_buttons(pid)
             )
 
-    # ===== BUY =====
     elif data.startswith("buy_"):
         _, pid, size = data.split("_")
 
-        cursor.execute(
-            "SELECT stock FROM sizes WHERE product_id=? AND size=?",
-            (pid, size)
-        )
+        cursor.execute("SELECT stock FROM sizes WHERE product_id=? AND size=?", (pid, size))
         result = cursor.fetchone()
 
         if not result or result[0] <= 0:
             await query.answer("Out of stock ❌", show_alert=True)
             return
 
-        cursor.execute(
-            "UPDATE sizes SET stock=stock-1 WHERE product_id=? AND size=?",
-            (pid, size)
-        )
+        cursor.execute("UPDATE sizes SET stock=stock-1 WHERE product_id=? AND size=?", (pid, size))
         conn.commit()
 
-        cursor.execute(
-            "SELECT stock FROM sizes WHERE product_id=? AND size=?",
-            (pid, size)
-        )
+        cursor.execute("SELECT stock FROM sizes WHERE product_id=? AND size=?", (pid, size))
         new_stock = cursor.fetchone()[0]
 
         await query.answer("✅ Order Complete")
@@ -184,57 +173,23 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
         await query.message.reply_text(
-            f"✅ Order Complete!\n\n"
-            f"👟 Size: {size}\n"
-            f"📦 Remaining: {new_stock}"
+            f"✅ Order Complete!\n\n👟 Size: {size}\n📦 Remaining: {new_stock}"
         )
 
-    # 🚫 NO STOCK
     elif data == "no_stock":
         await query.answer("Out of stock ❌", show_alert=True)
 
-    # ===== ADMIN CALLBACK =====
-    elif data.startswith("addcat_") or data.startswith("delcat_"):
-        user_id = query.from_user.id
-        if not is_allowed(user_id):
-            await query.answer("🚫 Not allowed", show_alert=True)
-            return
-
-        if data.startswith("addcat_"):
-            context.user_data["category_id"] = data.split("_")[1]
-            context.user_data["step"] = "photo"
-            await query.message.reply_text("📸 Send image")
-
-        elif data.startswith("delcat_"):
-            cid = data.split("_")[1]
-            cursor.execute("DELETE FROM categories WHERE id=?", (cid,))
-            cursor.execute("DELETE FROM products WHERE category_id=?", (cid,))
-            conn.commit()
-            await query.message.reply_text("🗑 Deleted")
-
-    # ===== STOCK CATEGORY =====
     elif data.startswith("stockcat_"):
         cat_id = data.split("_")[1]
 
         cursor.execute("SELECT * FROM products WHERE category_id=?", (cat_id,))
         for pid, file_id, price, _ in cursor.fetchall():
-            keyboard = build_stock_buttons(pid).inline_keyboard
-
-            keyboard.append([
-                InlineKeyboardButton("🗑 Delete Product", callback_data=f"confirmdelprod_{pid}")
-            ])
 
             await query.message.reply_photo(
                 photo=file_id,
                 caption=f"📦 Stock Manager\n💲 {price}",
-                reply_markup=InlineKeyboardMarkup(keyboard)
+                reply_markup=build_full_stock_buttons(pid)
             )
-
-	await query.message.reply_photo(
-    	    photo=file_id,
-    	    caption=f"📦 Stock Manager\n💲 {price}",
-	    reply_markup=InlineKeyboardMarkup(keyboard)
-	)
 
     elif data.startswith("confirmdelprod_"):
         pid = data.split("_")[1]
@@ -251,65 +206,49 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-    # ===== Add ➕ / ➖ logic =====
     elif data.startswith("plus_"):
         _, pid, size = data.split("_")
 
-        cursor.execute(
-            "UPDATE sizes SET stock = stock + 1 WHERE product_id=? AND size=?",
-            (pid, size)
-        )
+        cursor.execute("UPDATE sizes SET stock = stock + 1 WHERE product_id=? AND size=?", (pid, size))
         conn.commit()
 
         await query.answer("➕ Added")
 
         await query.message.edit_reply_markup(
-            reply_markup=build_stock_buttons(pid)
+            reply_markup=build_full_stock_buttons(pid)
         )
 
     elif data.startswith("minus_"):
         _, pid, size = data.split("_")
 
-        cursor.execute(
-            "SELECT stock FROM sizes WHERE product_id=? AND size=?",
-            (pid, size)
-        )
+        cursor.execute("SELECT stock FROM sizes WHERE product_id=? AND size=?", (pid, size))
         stock = cursor.fetchone()[0]
 
         if stock <= 0:
             await query.answer("Already 0 ❌", show_alert=True)
             return
 
-        cursor.execute(
-            "UPDATE sizes SET stock = stock - 1 WHERE product_id=? AND size=?",
-            (pid, size)
-        )
+        cursor.execute("UPDATE sizes SET stock = stock - 1 WHERE product_id=? AND size=?", (pid, size))
         conn.commit()
 
         await query.answer("➖ Reduced")
 
         await query.message.edit_reply_markup(
-            reply_markup=build_stock_buttons(pid)
+            reply_markup=build_full_stock_buttons(pid)
         )
 
-    elif data == "no_action":
-        await query.answer()
-
-    # ===== Delete Product =====
     elif data.startswith("deleteproduct_"):
         pid = data.split("_")[1]
 
-        # delete sizes first
         cursor.execute("DELETE FROM sizes WHERE product_id=?", (pid,))
-    
-        # delete product
         cursor.execute("DELETE FROM products WHERE id=?", (pid,))
-    
         conn.commit()
 
         await query.answer("🗑 Product Deleted")
-
         await query.message.delete()
+
+    elif data == "no_action":
+        await query.answer()
 
 # ===== TEXT =====
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -368,20 +307,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif text == "➕ Add More Product":
-        if not is_allowed(user_id):
-            await update.message.reply_text("🚫 Not allowed")
-            return
-
         cursor.execute("SELECT * FROM categories")
-        cats = cursor.fetchall()
-
-        if not cats:
-            await update.message.reply_text("Add category first")
-            return
-
         await update.message.reply_text(
             "Choose category",
-            reply_markup=build_grid(cats, "addcat")
+            reply_markup=build_grid(cursor.fetchall(), "addcat")
         )
 
     elif text == "🛍 Shop":
@@ -392,10 +321,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif text == "⚙️ Manage":
-        if not is_allowed(user_id):
-            await update.message.reply_text("🚫 Not allowed")
-            return
-
         keyboard = [
             [KeyboardButton("➕ Add")],
             [KeyboardButton("📦 Stock")],
@@ -406,67 +331,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
 
-    elif text == "➕ Add":
-        if not is_allowed(user_id):
-            await update.message.reply_text("🚫 Not allowed")
-            return
-
-        keyboard = [
-            [KeyboardButton("➕ Add Product")],
-            [KeyboardButton("📁 Categories")],
-            [KeyboardButton("🔙 Back")]
-        ]
-        await update.message.reply_text(
-            "Admin Menu",
-            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-        )
-
-    elif text == "📁 Categories":
-        keyboard = [
-            [KeyboardButton("➕ Add Category")],
-            [KeyboardButton("🗑 Delete Category")],
-            [KeyboardButton("🔙 Back")]
-        ]
-        await update.message.reply_text(
-            "📂 Category Manager",
-            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-        )
-
-    elif text == "➕ Add Category":
-        context.user_data["step"] = "add_cat"
-        await update.message.reply_text("Send category name")
-
-    elif text == "🗑 Delete Category":
-        cursor.execute("SELECT * FROM categories")
-        keyboard = [
-            [InlineKeyboardButton(name, callback_data=f"delcat_{cid}")]
-            for cid, name in cursor.fetchall()
-        ]
-        await update.message.reply_text(
-            "Choose:",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    elif text == "➕ Add Product":
-        cursor.execute("SELECT * FROM categories")
-        cats = cursor.fetchall()
-
-        if not cats:
-            await update.message.reply_text("Add category first")
-            return
-
-        await update.message.reply_text(
-            "Choose category",
-            reply_markup=build_grid(cats, "addcat")
-        )
-
     elif text == "📦 Stock":
-        if not is_allowed(user_id):
-            await update.message.reply_text("🚫 Not allowed")
-            return
-
         cursor.execute("SELECT * FROM categories")
-
         await update.message.reply_text(
             "📦 Stock (Select Category)",
             reply_markup=build_grid(cursor.fetchall(), "stockcat")
