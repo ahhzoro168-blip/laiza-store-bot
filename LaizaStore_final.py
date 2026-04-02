@@ -58,6 +58,40 @@ def build_grid(items, prefix, page=0, per_page=6, per_row=3):
 
     return InlineKeyboardMarkup(keyboard)
 
+def build_grid(items, prefix, page=0, per_page=9, per_row=3):
+    start = page * per_page
+    end = start + per_page
+    sliced = items[start:end]
+
+    keyboard = []
+    row = []
+
+    # ===== GRID (3x3) =====
+    for i, (item_id, name) in enumerate(sliced):
+        row.append(InlineKeyboardButton(name, callback_data=f"{prefix}_{item_id}"))
+
+        if (i + 1) % per_row == 0:
+            keyboard.append(row)
+            row = []
+
+    if row:
+        keyboard.append(row)
+
+    # ===== NAVIGATION =====
+    nav = []
+
+    if page > 0:
+        nav.append(InlineKeyboardButton("⬅️ Back", callback_data=f"{prefix}_page_{page-1}"))
+
+    if end < len(items):
+        nav.append(InlineKeyboardButton("➡️ Next", callback_data=f"{prefix}_page_{page+1}"))
+
+    # ALWAYS show nav if exist
+    if nav:
+        keyboard.append(nav)
+
+    return InlineKeyboardMarkup(keyboard)
+    
 # ===== SIZE BUTTONS =====
 def build_size_buttons(pid):
     cursor.execute("SELECT size, stock FROM sizes WHERE product_id=?", (pid,))
@@ -144,17 +178,15 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     # ===== CATEGORY VIEW =====
-    if data.startswith("cat_"):
+    if data.startswith("cat_page_"):
+        page = int(data.split("_")[2])
+        cursor.execute("SELECT * FROM categories")
+        markup = build_grid(cursor.fetchall(), "cat", page)
+        await query.message.edit_reply_markup(reply_markup=markup)
+
+    # ✅ THEN (normal click)
+    elif data.startswith("cat_"):
         cat_id = data.split("_")[1]
-
-        cursor.execute("SELECT * FROM products WHERE category_id=?", (cat_id,))
-        for pid, file_id, price, _ in cursor.fetchall():
-
-            await query.message.reply_photo(
-                photo=file_id,
-                caption=f"💲 {price}\n────────────\nSelect Size:",
-                reply_markup=build_size_buttons(pid)
-            )
 
     # ===== BUY =====
     elif data.startswith("buy_"):
