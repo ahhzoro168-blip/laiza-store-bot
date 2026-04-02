@@ -1,1 +1,1 @@
-worker: python LaizaStore.py
+worker: python LaizaStore_final.py
