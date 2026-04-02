@@ -100,6 +100,16 @@ def build_stock_buttons(pid):
 
     return InlineKeyboardMarkup(buttons)
 
+
+def build_full_stock_buttons(pid):
+    keyboard = build_full_stock_buttons(pid).inline_keyboard
+
+    keyboard.append([
+        InlineKeyboardButton("🗑 Delete Product", callback_data=f"confirmdelprod_{pid}")
+    ])
+
+    return InlineKeyboardMarkup(keyboard)
+
 # ===== START =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -209,18 +219,18 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cursor.execute("SELECT * FROM products WHERE category_id=?", (cat_id,))
         for pid, file_id, price, _ in cursor.fetchall():
 
-            keyboard = build_stock_buttons(pid).inline_keyboard
+        keyboard = build_stock_buttons(pid).inline_keyboard
 
-	    # add delete product button at bottom
-	    keyboard.append([
-	        InlineKeyboardButton("🗑 Delete Product", callback_data=f"confirmdelprod_{pid}")
-	    ])
+	# add delete product button at bottom
+	keyboard.append([
+	    InlineKeyboardButton("🗑 Delete Product", callback_data=f"confirmdelprod_{pid}")
+	])
 
-	    await query.message.reply_photo(
-    	        photo=file_id,
-    	        caption=f"📦 Stock Manager\n💲 {price}",
-	        reply_markup=InlineKeyboardMarkup(keyboard)
-	    )
+	await query.message.reply_photo(
+    	    photo=file_id,
+    	    caption=f"📦 Stock Manager\n💲 {price}",
+	    reply_markup=InlineKeyboardMarkup(keyboard)
+	)
 
     elif data.startswith("confirmdelprod_"):
         pid = data.split("_")[1]
@@ -370,7 +380,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_grid(cats, "addcat")
         )
 
-    if text == "🛍 Shop":
+    elif text == "🛍 Shop":
         cursor.execute("SELECT * FROM categories")
         await update.message.reply_text(
             "🛍 Choose Category",
