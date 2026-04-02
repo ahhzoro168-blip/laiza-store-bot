@@ -359,6 +359,24 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.message.reply_text("Send size and stock\nExample: 42:5")
 
+    # ===== ADD CATEGORY PAGINATION =====
+    elif data.startswith("addcat_page_"):
+        page = int(data.split("_")[2])
+
+        cursor.execute("SELECT * FROM categories")
+        markup = build_grid(cursor.fetchall(), "addcat", page)
+
+        await query.message.edit_reply_markup(reply_markup=markup)
+
+    # ===== SELECT CATEGORY (ADD PRODUCT) =====
+    elif data.startswith("addcat_"):
+        cat_id = data.split("_")[1]
+
+        context.user_data["category_id"] = cat_id
+        context.user_data["step"] = "photo"
+
+        await query.message.reply_text("📸 Send product image")
+
 # ===== TEXT =====
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
