@@ -236,12 +236,12 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["step"] = "photo"
             await query.message.reply_text("📸 Send image")
 
-        elif data.startswith("delcat_"):
-            cid = data.split("_")[1]
-            cursor.execute("DELETE FROM categories WHERE id=?", (cid,))
-            cursor.execute("DELETE FROM products WHERE category_id=?", (cid,))
-            conn.commit()
-            await query.message.reply_text("🗑 Deleted")
+    elif data.startswith("delcat_"):
+        cid = data.split("_")[1]
+        cursor.execute("DELETE FROM categories WHERE id=?", (cid,))
+        cursor.execute("DELETE FROM products WHERE category_id=?", (cid,))
+        conn.commit()
+        await query.message.reply_text("🗑 Deleted")
 
     # ===== STOCK CATEGORY =====
     elif data.startswith("stockcat_"):
@@ -358,15 +358,13 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.message.reply_text("Send size and stock\nExample: 42:5")
 
-    # ===== ADD PRODUCT =====
-    elif data.startswith("addcat_page_"):
-        page = int(data.split("_")[2])
-        cursor.execute("SELECT * FROM categories")
-        await query.message.edit_reply_markup(reply_markup=build_grid(cursor.fetchall(), "addcat", page))
-
+    # ===== SELECT CATEGORY (ADD PRODUCT) =====
     elif data.startswith("addcat_"):
-        context.user_data["category_id"] = data.split("_")[1]
+        cat_id = data.split("_")[1]
+
+        context.user_data["category_id"] = cat_id
         context.user_data["step"] = "photo"
+
         await query.message.reply_text("📸 Send product image")
 
 # ===== TEXT =====
