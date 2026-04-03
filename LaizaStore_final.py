@@ -23,6 +23,10 @@ ALLOWED_USERS = [
     OWNER_ID,
     1465920098
 ]
+ALLOWED_USERS = [
+    OWNER_ID,
+    925794809
+]
 
 def is_allowed(user_id):
     return user_id in ALLOWED_USERS
