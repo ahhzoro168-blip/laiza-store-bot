@@ -467,7 +467,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [KeyboardButton("🔙 Back")]
         ]
         await update.message.reply_text(
-            "Product Manager",
+            "🫂 Admin Menu",
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
 
