@@ -561,6 +561,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_grid(cats, "addcat"))
 
     elif text == STOCK_BTN:
+        cursor.execute("SELECT SUM(stock) FROM sizes")
+        result = cursor.fetchone()
+        total_stock = result[0] if result[0] else 0
         cursor.execute("SELECT COUNT(*) FROM products")
         total_products = cursor.fetchone()[0]
         await update.message.reply_text(
