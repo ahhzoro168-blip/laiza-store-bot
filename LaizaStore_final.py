@@ -127,7 +127,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
 
     await update.message.reply_text(
-        "✨ Welcome\n\nChoose:",
+        "✨ Welcome to Laiza Store\n\nPlease Click on Shop:",
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
 
@@ -175,7 +175,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await query.message.reply_photo(
                 photo=file_id,
-                caption=f"💲 {price}\n────────────\nSelect Size:",
+                caption=f"Price: {price}\n────────────\nSelect Size:",
                 reply_markup=InlineKeyboardMarkup(buttons)
             )
 
@@ -452,7 +452,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "🛍 Shop":
         cursor.execute("SELECT * FROM categories")
         await update.message.reply_text(
-            "🛍 Choose Category",
+            "🔎 Find Shose Mode that you want",
             reply_markup=build_grid(cursor.fetchall(), "cat")
         )
 
