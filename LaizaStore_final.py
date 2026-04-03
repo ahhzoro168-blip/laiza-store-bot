@@ -58,7 +58,7 @@ def is_allowed(user_id):
 
 
 # ===== GRID =====
-def build_grid(items, prefix, page=0, per_page=6, per_row=2):
+def build_grid(items, prefix, page=0, per_page=9, per_row=2):
     start = page * per_page
     end = start + per_page
     sliced = items[start:end]
