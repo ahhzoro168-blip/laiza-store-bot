@@ -467,7 +467,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [KeyboardButton("🔙 Back")]
         ]
         await update.message.reply_text(
-            "Admin Menu",
+            "Product Manager",
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
 
@@ -521,7 +521,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [KeyboardButton("🔙 Back")]
         ]
         await update.message.reply_text(
-            "⚙️ Manage",
+            "Choose option:",
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
 
