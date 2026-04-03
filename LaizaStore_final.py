@@ -20,6 +20,10 @@ from telegram.ext import (
 import sqlite3
 import os
 
+import asyncio
+
+media_groups = {}
+
 
 # ===== KHMER TEXT =====
 SHOP_BTN = "🛍 ទិញទំនិញ"
@@ -43,6 +47,7 @@ cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, name TEXT)")
 cursor.execute("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, file_id TEXT, price TEXT, category_id INTEGER)")
 cursor.execute("CREATE TABLE IF NOT EXISTS sizes (id INTEGER PRIMARY KEY, product_id INTEGER, size TEXT, stock INTEGER)")
+cursor.execute("""CREATE TABLE IF NOT EXISTS product_images (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, file_id TEXT)""")
 conn.commit()
 
 
@@ -179,11 +184,23 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text("⚠️ មិនមានម៉ូតស្បែកជើងនៅក្នុងប្រភេទនេះ")
             return
         for pid, file_id, price, _ in products:
-            await query.message.reply_photo(
-                photo=file_id,
-                caption=f"តម្លៃ: {price} ក្នុង1គូ\n────────────\nសូមជ្រើសទំហំ:",
-                reply_markup=build_size_buttons(pid)
-            )
+            from telegram import InputMediaPhoto
+            for pid, file_id, price in products:
+                cursor.execute("SELECT file_id FROM product_images WHERE product_id=?", (pid,))
+                images = cursor.fetchall()
+                if images:
+                    media = []
+                    for i, (fid,) in enumerate(images):
+                        if i == 0:
+                            media.append(InputMediaPhoto(fid, caption=f"💰 តម្លៃ: {price}"))
+                        else:
+                            media.append(InputMediaPhoto(fid))
+                    await query.message.reply_media_group(media)
+                else:
+                    await query.message.reply_photo(
+                        photo=file_id,
+                        caption=f"💰 តម្លៃ: {price}")
+                await query.message.reply_text("សូមជ្រើសទំហំ:", reply_markup=build_size_buttons(pid))
         await query.message.reply_text(
             "📌 សូមជ្រើសរើសម៉ូតស្បែកជើងខាងលើ\nឬចុចត្រឡប់ក្រោយ",
             reply_markup=InlineKeyboardMarkup([
@@ -406,18 +423,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif step == "sizes":
         cursor.execute(
-            "INSERT INTO products (file_id, price, category_id) VALUES (?,?,?)",
-            (context.user_data["file_id"], context.user_data["price"], context.user_data["category_id"])
-        )
+            "INSERT INTO products (price, category_id) VALUES (?, ?)",
+            (context.user_data["price"], context.user_data["category_id"]))
         pid = cursor.lastrowid
-        for item in text.split(","):
-            if ":" not in item:
-                continue
-            s, st = item.split(":")
+        images = context.user_data.get("images", [])
+        for file_id in images:
             cursor.execute(
-                "INSERT INTO sizes (product_id, size, stock) VALUES (?,?,?)",
-                (pid, s, int(st))
-            )
+                "INSERT INTO product_images (product_id, file_id) VALUES (?, ?)",(pid, file_id))
         conn.commit()
         context.user_data.clear()
         keyboard = [
@@ -598,10 +610,24 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("step") != "photo":
         return
-
-    context.user_data["file_id"] = update.message.photo[-1].file_id
-    context.user_data["step"] = "price"
-    await update.message.reply_text("សូមផ្ញើតម្លៃ")
+    message = update.message
+    file_id = message.photo[-1].file_id
+    media_group_id = message.media_group_id
+    if media_group_id:
+        if media_group_id not in media_groups:
+            media_groups[media_group_id] = []
+        media_groups[media_group_id].append(file_id)
+        await asyncio.sleep(1)
+        images = media_groups.get(media_group_id, [])
+        if images:
+            context.user_data["images"] = images
+            del media_groups[media_group_id]
+            context.user_data["step"] = "price"
+            await message.reply_text(f"បានទទួល {len(images)} រូបភាព ✅\nសូមផ្ញើតម្លៃ")
+    else:
+        context.user_data["images"] = [file_id]
+        context.user_data["step"] = "price"
+        await message.reply_text("បានទទួលរូបភាព 1 ✅\nសូមផ្ញើតម្លៃ")
 
 
 # ===== RUN =====
