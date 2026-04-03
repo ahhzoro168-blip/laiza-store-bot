@@ -171,7 +171,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 row = []
 
             if row:
-                buttons.append(row)
+            buttons.append(row)
 
             await query.message.reply_photo(
                 photo=file_id,
