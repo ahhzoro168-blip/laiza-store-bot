@@ -249,7 +249,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cursor.execute("SELECT * FROM products WHERE category_id=?", (cid,))
         products = cursor.fetchall()
         if not products:
-            await query.answer("❌ គ្មានម៉ូតស្បែកជើងក្នុងប្រភេទទំនិញនេះ", show_alert=True)
+            await query.answer("❌ គ្មានម៉ូតស្បែកជើងក្នុងប្រភេទទំនិញនេះទេ", show_alert=True)
             return
         for pid, file_id, price, _ in products:
             keyboard = list(build_stock_buttons(pid).inline_keyboard)
@@ -311,7 +311,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([
             InlineKeyboardButton("➕ ទំហំ", callback_data=f"addsize_{pid}"),
             InlineKeyboardButton("✏️ កែតម្លៃ", callback_data=f"editprice_{pid}"),
-            InlineKeyboardButton("🗑 លុបម៉ូតស្បែកជើងនេះ", callback_data=f"deleteproduct_{pid}")
+            InlineKeyboardButton("🗑 លុបម៉ូតស្បែកជើង", callback_data=f"deleteproduct_{pid}")
         ])
         await query.message.delete()
         await query.message.reply_photo(
@@ -437,7 +437,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append([
                 InlineKeyboardButton("➕ ទំហំ", callback_data=f"addsize_{pid}"),
                 InlineKeyboardButton("✏️ កែតម្លៃ", callback_data=f"editprice_{pid}"),
-                InlineKeyboardButton("🗑 លុបម៉ូតស្បែកជើងនេះ", callback_data=f"deleteproduct_{pid}")
+                InlineKeyboardButton("🗑 លុបម៉ូតស្បែកជើង", callback_data=f"deleteproduct_{pid}")
             ])
             total = get_total_stock(pid)
             await update.message.reply_photo(
@@ -454,7 +454,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == SHOP_BTN:
         cursor.execute("SELECT * FROM categories")
         await update.message.reply_text(
-            "ជ្រើសរើសប្រភេទស្បែកជើងជាមុនសិន",
+            "សូមជ្រើសរើសប្រភេទស្បែកជើងជាមុនសិន",
             reply_markup=build_grid(cursor.fetchall(), "cat")
         )
 
@@ -541,7 +541,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ សូមបន្ថែមប្រភេទស្បែកជើងមុន")
             return
         await update.message.reply_text(
-            "ជ្រើសរើសប្រភេទស្បែកជើងជាមុនសិន",
+            "ជ្រើសរើសប្រភេទស្បែកជើង",
             reply_markup=build_grid(cats, "addcat")
         )
 
@@ -552,15 +552,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ សូមបន្ថែមប្រភេទស្បែកជើងមុន")
             return
         await update.message.reply_text(
-            "ជ្រើសរើសប្រភេទស្បែកជើងជាមុនសិន",
+            "ជ្រើសរើសប្រភេទស្បែកជើង",
             reply_markup=build_grid(cats, "addcat")
         )
 
     elif text == STOCK_BTN:
-        cursor.execute("SELECT * FROM categories")
+        cursor.execute("SELECT COUNT(*) FROM products")
+        total_products = cursor.fetchone()[0]
         await update.message.reply_text(
-            "📦 ស្តុក:",
-            reply_markup=build_grid(cursor.fetchall(), "stockcat")
+            f"📦 ស្តុកស្បែកជើងសរុប: {total_stock}\n✨ ចំនួនស្បែកជើងម៉ូត: {total_products}"
         )
 
     elif text == BACK_BTN:
