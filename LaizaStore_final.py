@@ -184,6 +184,12 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 caption=f"តម្លៃ: {price} ក្នុង1គូ\n────────────\nសូមជ្រើសទំហំ:",
                 reply_markup=build_size_buttons(pid)
             )
+        await query.message.reply_text(
+            "📌 សូមជ្រើសរើសម៉ូតស្បែកជើងខាងលើ\nឬចុចត្រឡប់ក្រោយ",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ ត្រឡប់ទៅប្រភេទស្បែកជើង", callback_data="back_to_categories")]
+            ])
+        )
         return
 
     
