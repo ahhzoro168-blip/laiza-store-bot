@@ -37,33 +37,6 @@ cursor.execute("CREATE TABLE IF NOT EXISTS sizes (id INTEGER PRIMARY KEY, produc
 conn.commit()
 
 # ===== GRID =====
-def build_grid(items, prefix, page=0, per_page=6, per_row=3):
-    start = page * per_page
-    end = start + per_page
-    sliced = items[start:end]
-
-    keyboard, row = [], []
-
-    for i, (item_id, name) in enumerate(sliced):
-        row.append(InlineKeyboardButton(name, callback_data=f"{prefix}_{item_id}"))
-        if (i + 1) % per_row == 0:
-            keyboard.append(row)
-            row = []
-
-    if row:
-        keyboard.append(row)
-
-    nav = []
-    if page > 0:
-        nav.append(InlineKeyboardButton("⬅️", callback_data=f"{prefix}_page_{page-1}"))
-    if end < len(items):
-        nav.append(InlineKeyboardButton("➡️", callback_data=f"{prefix}_page_{page+1}"))
-
-    if nav:
-        keyboard.append(nav)
-
-    return InlineKeyboardMarkup(keyboard)
-
 def build_grid(items, prefix, page=0, per_page=6, per_row=2):
     start = page * per_page
     end = start + per_page
@@ -72,7 +45,6 @@ def build_grid(items, prefix, page=0, per_page=6, per_row=2):
     keyboard = []
     row = []
 
-    # ===== GRID (3x3) =====
     for i, (item_id, name) in enumerate(sliced):
         row.append(InlineKeyboardButton(name, callback_data=f"{prefix}_{item_id}"))
 
@@ -83,7 +55,6 @@ def build_grid(items, prefix, page=0, per_page=6, per_row=2):
     if row:
         keyboard.append(row)
 
-    # ===== NAVIGATION =====
     nav = []
 
     if page > 0:
@@ -92,12 +63,11 @@ def build_grid(items, prefix, page=0, per_page=6, per_row=2):
     if end < len(items):
         nav.append(InlineKeyboardButton("➡️ Next", callback_data=f"{prefix}_page_{page+1}"))
 
-    # ALWAYS show nav if exist
     if nav:
         keyboard.append(nav)
 
     return InlineKeyboardMarkup(keyboard)
-    
+
 # ===== SIZE BUTTONS =====
 def build_size_buttons(pid):
     cursor.execute("SELECT size, stock FROM sizes WHERE product_id=?", (pid,))
@@ -121,22 +91,6 @@ def build_size_buttons(pid):
 
     if row:
         buttons.append(row)
-
-    return InlineKeyboardMarkup(buttons)
-
-# ===== STOCK buttons =====
-def build_stock_buttons(pid):
-    cursor.execute("SELECT size, stock FROM sizes WHERE product_id=?", (pid,))
-    sizes = cursor.fetchall()
-
-    buttons = []
-
-    for s, st in sizes:
-        buttons.append([
-            InlineKeyboardButton("➖", callback_data=f"minus_{pid}_{s}"),
-            InlineKeyboardButton(f"{s} ({st})", callback_data="no_action"),
-            InlineKeyboardButton("➕", callback_data=f"plus_{pid}_{s}")
-        ])
 
     return InlineKeyboardMarkup(buttons)
 
@@ -193,6 +147,37 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ✅ THEN (normal click)
     elif data.startswith("cat_"):
         cat_id = data.split("_")[1]
+
+        cursor.execute("SELECT * FROM products WHERE category_id=?", (cat_id,))
+        products = cursor.fetchall()
+
+        if not products:
+            await query.answer("No products ❌", show_alert=True)
+            return
+
+        for product_id, file_id, price, _ in products:
+            cursor.execute("SELECT size, stock FROM sizes WHERE product_id=?", (product_id,))
+            sizes = cursor.fetchall()
+
+            buttons = []
+            row = []
+
+            for size, stock in sizes:
+                label = f"{size}" if stock > 0 else f"{size} ❌"
+                row.append(InlineKeyboardButton(label, callback_data=f"buy_{product_id}_{size}"))
+
+                if len(row) == 4:
+                buttons.append(row)
+                row = []
+
+            if row:
+                buttons.append(row)
+
+            await query.message.reply_photo(
+                photo=file_id,
+                caption=f"💲 {price}\n────────────\nSelect Size:",
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
 
     # ===== BUY =====
     elif data.startswith("buy_"):
@@ -277,6 +262,14 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 caption=f"📦 Stock Manager\n💲 {price}",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
+
+    elif data.startswith("stockcat_page_"):
+        page = int(data.split("_")[2])
+
+        cursor.execute("SELECT * FROM categories")
+        markup = build_grid(cursor.fetchall(), "stockcat", page)
+
+        await query.message.edit_reply_markup(reply_markup=markup)
 
     # ===== Add ➕ / ➖ logic =====
     elif data.startswith("plus_"):
