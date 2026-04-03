@@ -166,12 +166,12 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 label = f"{size}" if stock > 0 else f"{size} ❌"
                 row.append(InlineKeyboardButton(label, callback_data=f"buy_{product_id}_{size}"))
 
-            if len(row) == 4:
-            buttons.append(row)
-            row = []
+                if len(row) == 4:
+                    buttons.append(row)
+                    row = []
 
             if row:
-            buttons.append(row)
+                buttons.append(row)
 
             await query.message.reply_photo(
                 photo=file_id,
