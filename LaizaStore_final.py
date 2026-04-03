@@ -548,8 +548,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         await update.message.reply_text(
             "ជ្រើសរើសប្រភេទស្បែកជើង",
-            reply_markup=build_grid(cats, "addcat")
-        )
+            reply_markup=build_grid(cats, "addcat"))
 
     elif text == ADD_MORE_PRODUCT_BTN:
         cursor.execute("SELECT * FROM categories")
@@ -559,15 +558,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         await update.message.reply_text(
             "ជ្រើសរើសប្រភេទស្បែកជើង",
-            reply_markup=build_grid(cats, "addcat")
-        )
+            reply_markup=build_grid(cats, "addcat"))
 
-    elif "ស្តុក" in text:
+    elif text == STOCK_BTN:
         cursor.execute("SELECT COUNT(*) FROM products")
         total_products = cursor.fetchone()[0]
         await update.message.reply_text(
-            f"📦 ស្តុកស្បែកជើងសរុប: {total_stock}\n✨ ចំនួនស្បែកជើងម៉ូត: {total_products}"
-        )
+            f"📦 ស្តុកស្បែកជើងសរុប: {total_stock}\n✨ ចំនួនស្បែកជើងម៉ូត: {total_products}")
 
     elif text == BACK_BTN:
         await start(update, context)
@@ -576,8 +573,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pid = context.user_data["product_id"]
         cursor.execute(
             "UPDATE products SET price=? WHERE id=?",
-            (text, pid)
-        )
+            (text, pid))
         conn.commit()
         context.user_data.clear()
         await update.message.reply_text("✅ បានកែតម្លៃរួច")
