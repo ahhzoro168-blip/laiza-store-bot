@@ -367,6 +367,14 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.message.edit_reply_markup(reply_markup=markup)
 
+    elif data.startswith("addcat_"):
+        cat_id = data.split("_")[1]
+
+        context.user_data["category_id"] = cat_id
+        context.user_data["step"] = "photo"
+
+        await query.message.reply_text("📸 Send product image")
+
     # ===== SELECT CATEGORY (ADD PRODUCT) =====
     elif data.startswith("addcat_"):
         cat_id = data.split("_")[1]
