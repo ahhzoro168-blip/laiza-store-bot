@@ -185,6 +185,11 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("buy_"):
         _, pid, size = data.split("_")
 
+        user = query.from_user
+        user_name = user.full_name
+        user_id = user.id
+
+        # get stock
         cursor.execute(
             "SELECT stock FROM sizes WHERE product_id=? AND size=?",
             (pid, size)
@@ -195,19 +200,59 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer("Out of stock ❌", show_alert=True)
             return
 
+        # reduce stock
         cursor.execute(
             "UPDATE sizes SET stock=stock-1 WHERE product_id=? AND size=?",
             (pid, size)
         )
         conn.commit()
 
+        # get updated stock
+        cursor.execute(
+            "SELECT stock FROM sizes WHERE product_id=? AND size=?",
+            (pid, size)
+        )
+        new_stock = cursor.fetchone()[0]
+
+        # get product price
+        cursor.execute(
+            "SELECT price FROM products WHERE id=?",
+            (pid,)
+        )
+        price = cursor.fetchone()[0]
+
         await query.answer("✅ Order Complete")
 
+        # update UI
         await query.message.edit_reply_markup(
             reply_markup=build_size_buttons(pid)
         )
 
-        return
+        # ===== SEND TO USER =====
+        await query.message.reply_text(
+            f"✅ Order Complete!\n\n"
+            f"👟 Size: {size}\n"
+            f"💰 Price: {price}\n"
+            f"📦 Remaining: {new_stock}"
+        )
+
+        # ===== 🔔 SEND TO OWNER =====
+        try:
+            await context.bot.send_message(
+                chat_id=OWNER_ID,
+                text=(
+                    "🛒 *NEW ORDER*\n\n"
+                    f"👤 User: {user_name}\n"
+                    f"🆔 ID: `{user_id}`\n\n"
+                    f"👟 Product ID: {pid}\n"
+                    f"📏 Size: {size}\n"
+                    f"💰 Price: {price}\n\n"
+                    f"📦 Remaining: {new_stock}"
+                ),
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            print("Notify error:", e)
 
     elif data == "no_stock":
         await query.answer("Out of stock ❌", show_alert=True)
