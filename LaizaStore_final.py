@@ -242,11 +242,14 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("delcat_"):
         cid = data.split("_")[1]
-        cursor.execute("DELETE FROM categories WHERE id=?", (cid,))
+        cursor.execute("""
+            DELETE FROM sizes 
+            WHERE product_id IN (
+                SELECT id FROM products WHERE category_id=?)""", (cid,))
         cursor.execute("DELETE FROM products WHERE category_id=?", (cid,))
+        cursor.execute("DELETE FROM categories WHERE id=?", (cid,))
         conn.commit()
         await query.message.reply_text("🗑 បានលុបប្រភេទទំនិញរួចរាល់")
-        return
         
 
     # ===== STOCK VIEW =====
@@ -567,7 +570,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cursor.execute("SELECT COUNT(*) FROM products")
         total_products = cursor.fetchone()[0]
         await update.message.reply_text(
-            f"📦 ស្តុកស្បែកជើងសរុប: {total_stock}\n✨ ចំនួនស្បែកជើងម៉ូត: {total_products}")
+            f"📦 ស្តុកស្បែកជើងសរុប: {total_stock}\n✨ ចំនួនម៉ូតស្បែកជើងសរុប: {total_products}")
+        cursor.execute("SELECT * FROM categories")
+        cats = cursor.fetchall()
+        if not cats:
+            await update.message.reply_text("❌ មិនមានប្រភេទទំនិញ")
+            return
+        await update.message.reply_text(
+            "📦 ជ្រើសរើសប្រភេទស្បែកជើងដើម្បីមើលស្តុក",
+            reply_markup=build_grid(cats, "stockcat"))
 
     elif text == BACK_BTN:
         await start(update, context)
